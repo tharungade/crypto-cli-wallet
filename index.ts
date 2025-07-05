@@ -1,4 +1,4 @@
-import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 
 const readline = require('node:readline');
 
@@ -45,8 +45,32 @@ async function main() {
             });
         }
         else if(answer === "3") {
-            console.log("await for the feature");
-            rl.close();
+            console.log("Enter private key of the sender");
+            rl.question("Senders private key: ", (sendersPrivateKey: string) => {
+                const connection = new Connection("https://api.devnet.solana.com");
+                const payer = Keypair.fromSecretKey(Uint8Array.from(sendersPrivateKey.split(",").map(_ => Number(_))));
+                console.log(payer.publicKey.toBase58());
+                console.log("Enter public key of the receiver");
+                rl.question("Receiver public key:", async (publicKey: string) => {
+                    const receiverPublicKey = new PublicKey(publicKey);
+                    // default to transfer 0.1 sol
+                    const transaction = new Transaction().add(
+                        SystemProgram.transfer({
+                            fromPubkey: payer.publicKey,
+                            toPubkey: receiverPublicKey,
+                            lamports: LAMPORTS_PER_SOL * 0.1
+                        })
+                    );
+
+                    transaction.feePayer = payer.publicKey;
+                    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+                    transaction.partialSign(payer);
+
+                    const signature = await connection.sendRawTransaction(transaction.serialize());
+                    console.log("Signature: ", signature);
+                    rl.close();
+                });
+            });
         }
         else if(answer === "4") {
             console.log("exited");

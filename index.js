@@ -52,8 +52,28 @@ function main() {
                 });
             }
             else if (answer === "3") {
-                console.log("await for the feature");
-                rl.close();
+                console.log("Enter private key of the sender");
+                rl.question("Senders private key: ", (sendersPrivateKey) => {
+                    const connection = new web3_js_1.Connection("https://api.devnet.solana.com");
+                    const payer = web3_js_1.Keypair.fromSecretKey(Uint8Array.from(sendersPrivateKey.split(",").map(_ => Number(_))));
+                    console.log(payer.publicKey.toBase58());
+                    console.log("Enter public key of the receiver");
+                    rl.question("Receiver public key:", (publicKey) => __awaiter(this, void 0, void 0, function* () {
+                        const receiverPublicKey = new web3_js_1.PublicKey(publicKey);
+                        // default to transfer 0.1 sol
+                        const transaction = new web3_js_1.Transaction().add(web3_js_1.SystemProgram.transfer({
+                            fromPubkey: payer.publicKey,
+                            toPubkey: receiverPublicKey,
+                            lamports: web3_js_1.LAMPORTS_PER_SOL * 0.1
+                        }));
+                        transaction.feePayer = payer.publicKey;
+                        transaction.recentBlockhash = (yield connection.getLatestBlockhash()).blockhash;
+                        transaction.partialSign(payer);
+                        const signature = yield connection.sendRawTransaction(transaction.serialize());
+                        console.log("Signature: ", signature);
+                        rl.close();
+                    }));
+                });
             }
             else if (answer === "4") {
                 console.log("exited");
